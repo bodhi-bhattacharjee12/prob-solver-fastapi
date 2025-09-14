@@ -30,8 +30,6 @@ class Nodes:
             ]
         )
 
-        #print("Report Sections:",report_sections)
-
         return {"sections": report_sections.sections}
 
     def llm_call(self,state: WorkerState):
@@ -59,9 +57,8 @@ class Nodes:
             json_content = split.split("```")[0].strip()
             json_content = json_content.replace(".", "")  # Ensure valid JSON format
             json_content = json.loads(json_content)  # Parse the JSON content
-            #return {"completed_sections": [section.content]}
             #("Genereted content", json_content)
-            print("*" * 20 )
+            #("*" * 20 )
             return {"completed_sections": [json_content['content']]}
         except Exception as e:
             print(f"Error in llm_call: {e}, for section: {state['section'].name}")
@@ -77,7 +74,6 @@ class Nodes:
 
         # Kick off section writing in parallel via Send() API
         sends = [Send("llm_call", {"section": s}) for s in state["sections"]]
-        #print("list of sends:", sends)
         return sends
 
     def synthesizer(self, state: State):
