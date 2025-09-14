@@ -9,3 +9,6 @@ logs/
 
 # Ignore environment files
 .env
+
+# Ignore database files 
+*.db
