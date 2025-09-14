@@ -4,15 +4,19 @@ from langchain_groq import ChatGroq
 
 
 class Groq_AIModelAdapter:
-    def __init__(self):
+    def __init__(self, temperature=0.8, max_tokens=2048):
         load_dotenv()
         self.groq_api_key = os.getenv("GROQ_API_KEY")
+        self.temperature = temperature
+        self.max_tokens = max_tokens
         if not self.groq_api_key:
             raise ValueError("GROQ_API_KEY is not set in the environment variables.")
 
         # Initialize the Groq chat model instance here so get_llm() can return it
         try:
-            self.llm = ChatGroq(model="openai/gpt-oss-120b", api_key=self.groq_api_key)
+            self.llm = ChatGroq(model="openai/gpt-oss-120b", api_key=self.groq_api_key,
+                                temperature=self.temperature,
+                                max_tokens=self.max_tokens)
         except Exception as e:
             # Raise a clearer error if the model cannot be initialized
             raise RuntimeError(f"Failed to initialize Groq Chat model: {e}") from e

@@ -37,8 +37,8 @@ class Nodes:
     def llm_call(self,state: WorkerState):
         """Worker writes a section of the report"""
         try:
-            print(f"Section name: {state['section'].name}")
-            print(f"Section description: {state['section'].description}")
+            #print(f"Section name: {state['section'].name}")
+            #print(f"Section description: {state['section'].description}")
             # Generate section
             section = self.llm.invoke(
                 [
@@ -60,7 +60,7 @@ class Nodes:
             json_content = json_content.replace(".", "")  # Ensure valid JSON format
             json_content = json.loads(json_content)  # Parse the JSON content
             #return {"completed_sections": [section.content]}
-            print("Genereted content", json_content)
+            #("Genereted content", json_content)
             print("*" * 20 )
             return {"completed_sections": [json_content['content']]}
         except Exception as e:

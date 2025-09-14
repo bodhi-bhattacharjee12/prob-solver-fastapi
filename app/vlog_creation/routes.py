@@ -28,7 +28,6 @@ async def generate_vlog_endpoint(llm_message: str, model: Groq_AIModelAdapter = 
     try:
         # Call the service function to generate the vlog
         response = generate_vlog(llm_message, model=model)
-        print("Response from generate_vlog:", response)
         #return response
         return JSONResponse(content={"message": response}, status_code=200)
     except ValueError as ve:
