@@ -20,36 +20,55 @@ class Nodes:
         self.llm = model.get_llm()
         self.planner = get_planner(model)
 
-    def orchestrator(self,state: State):
+    def _get_field(self, obj, field):
+        """Safely get a field from a dict-like or object-like state."""
+        try:
+            if isinstance(obj, dict):
+                return obj.get(field)
+            return getattr(obj, field, None)
+        except Exception:
+            return None
+
+    def orchestrator(self, state: State):
         """Orchestrator that generates a plan for the report"""
 
-        print("Orchestrator node reached. Current state:",state.topic)
+        topic = self._get_field(state, "topic")
+        print("Orchestrator node reached. Current state:", topic)
         # Generate queries
         report_sections = self.planner.invoke(
             [
                 SystemMessage(content="Generate a plan for the report."),
-                HumanMessage(content=f"Here is the report topic: {state['topic']}"),
+                HumanMessage(content=f"Here is the report topic: {topic or ''}"),
             ]
         )
 
         return {"sections": report_sections.sections}
 
-    def llm_call(self,state: WorkerState):
+    def llm_call(self, state: WorkerState):
         """Worker writes a section of the report"""
         try:
-            #print(f"Section name: {state['section'].name}")
-            #print(f"Section description: {state['section'].description}")
+            # Safely extract section info (state may be a dict)
+            sec = state.get("section") if isinstance(state, dict) else getattr(state, "section", None)
+            if isinstance(sec, dict):
+                sec_name = sec.get("name")
+                sec_desc = sec.get("description")
+            else:
+                sec_name = getattr(sec, "name", None)
+                sec_desc = getattr(sec, "description", None)
+
             # Generate section
             section = self.llm.invoke(
                 [
                     SystemMessage(
-                        content="Write a report section following the provided name and description. Include no preamble for each section. "
-                        + "Do not include any reasoning or inner thoughts. Only return the final output in markdown format, starting immediately with the content." 
-                        + "Return the output as a JSON object with a single key 'content' containing the section content."
-                        + "Note the json should be enclosed with ````json{'content':'###'}``` so that it can be extracted easily from the generated context."
+                        content=(
+                            "Write a report section following the provided name and description. Include no preamble for each section. "
+                            + "Do not include any reasoning or inner thoughts. Only return the final output in markdown format, starting immediately with the content."
+                            + "Return the output as a JSON object with a single key 'content' containing the section content."
+                            + "Note the json should be enclosed with ````json{'content':'###'}``` so that it can be extracted easily from the generated context."
+                        )
                     ),
                     HumanMessage(
-                        content=f"Here is the section name: {state['section'].name} and description: {state['section'].description}"
+                        content=f"Here is the section name: {sec_name or ''} and description: {sec_desc or ''}"
                     ),
                 ]
             )
@@ -59,14 +78,17 @@ class Nodes:
             json_content = split.split("```")[0].strip()
             json_content = json_content.replace(".", "")  # Ensure valid JSON format
             json_content = json.loads(json_content)  # Parse the JSON content
-            #("Genereted content", json_content)
-            #("*" * 20 )
-            return {"completed_sections": [json_content['content']]}
+            return {"completed_sections": [json_content["content"]]}
         except Exception as e:
-            print(f"Error in llm_call: {e}, for section: {state['section'].name}")
-            print("*" * 20 )
-            return {"completed_sections": ['']}
-            #raise RuntimeError("Failed to generate section content") from e
+            # Safe section name extraction for logging
+            sec = state.get("section") if isinstance(state, dict) else getattr(state, "section", None)
+            if isinstance(sec, dict):
+                sec_name = sec.get("name")
+            else:
+                sec_name = getattr(sec, "name", None)
+            print(f"Error in llm_call: {e}, for section: {sec_name}")
+            print("*" * 20)
+            return {"completed_sections": [""]}
 
         # Befor returning the section we need to format or extract the content from the section
 
