@@ -9,3 +9,10 @@ def get_ai_model(request: Request) -> Groq_AIModelAdapter:
     if not model:
         raise RuntimeError("LLM not initialized")
     return model
+
+
+def get_orchestrator_worker(request: Request):
+    orchestrator_worker = request.app.state.orchestrator_worker
+    if not orchestrator_worker:
+        raise RuntimeError("Orchestrator worker not initialized")
+    return orchestrator_worker

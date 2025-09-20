@@ -3,6 +3,7 @@ from fastapi import Depends, Request
 from langgraph.types import Send
 from typing_extensions import TypedDict
 from langchain_core.messages import HumanMessage,SystemMessage
+from langgraph.checkpoint.memory import MemorySaver
 
 from app.vlog_creation.schema import Section, WorkerState, State
 from app.vlog_creation.dependencies import get_ai_model
@@ -22,6 +23,7 @@ class Nodes:
     def orchestrator(self,state: State):
         """Orchestrator that generates a plan for the report"""
 
+        print("Orchestrator node reached. Current state:",state.topic)
         # Generate queries
         report_sections = self.planner.invoke(
             [
@@ -75,6 +77,12 @@ class Nodes:
         # Kick off section writing in parallel via Send() API
         sends = [Send("llm_call", {"section": s}) for s in state["sections"]]
         return sends
+    
+    ## Human feedback node
+
+    def human_feedback(self, state:State):
+        print("Human feedback node reached. Current state:",state.sections)
+        pass
 
     def synthesizer(self, state: State):
         """Synthesize full report from sections"""
@@ -105,11 +113,17 @@ class Nodes:
         self.orchestrator_worker_builder.add_node("orchestrator", self.orchestrator)
         self.orchestrator_worker_builder.add_node("llm_call", self.llm_call)
         self.orchestrator_worker_builder.add_node("synthesizer", self.synthesizer)
+        self.orchestrator_worker_builder.add_node("human_feedback", self.human_feedback)
 
         # Add edges to connect nodes
         self.orchestrator_worker_builder.add_edge(START, "orchestrator")
+        self.orchestrator_worker_builder.add_edge("orchestrator", "human_feedback")
+        
+        #self.orchestrator_worker_builder.add_conditional_edges(
+        #    "orchestrator", self.assign_workers, ["llm_call"]
+        #)
         self.orchestrator_worker_builder.add_conditional_edges(
-            "orchestrator", self.assign_workers, ["llm_call"]
+            "human_feedback", self.assign_workers, ["llm_call"]
         )
         self.orchestrator_worker_builder.add_edge("llm_call", "synthesizer")
         self.orchestrator_worker_builder.add_edge("synthesizer", END)
@@ -118,7 +132,8 @@ class Nodes:
         """Compile the graph and return the workflow"""
         try:
             self.build_workflow()
-            self.orchestrator_worker = self.orchestrator_worker_builder.compile()
+            memory=MemorySaver()
+            self.orchestrator_worker = self.orchestrator_worker_builder.compile(interrupt_before=["human_feedback"],checkpointer=memory)
             print("grapg compilation is successful",type(self.orchestrator_worker))
             return self.orchestrator_worker
         except Exception as e:
