@@ -16,3 +16,10 @@ def get_orchestrator_worker(request: Request):
     if not orchestrator_worker:
         raise RuntimeError("Orchestrator worker not initialized")
     return orchestrator_worker
+
+
+def get_state_worker(request: Request):
+    state = request.app.state.state
+    if not state:
+        raise RuntimeError("State worker not initialized")
+    return state

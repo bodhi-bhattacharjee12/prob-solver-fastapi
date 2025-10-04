@@ -24,7 +24,9 @@ class Nodes:
         """Safely get a field from a dict-like or object-like state."""
         try:
             if isinstance(obj, dict):
+                print("topic is in dict")
                 return obj.get(field)
+            print("topic is in object")
             return getattr(obj, field, None)
         except Exception:
             return None

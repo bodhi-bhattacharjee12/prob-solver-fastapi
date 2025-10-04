@@ -3,12 +3,14 @@
 
 # Ignore the __pycache__ directory
 __pycache__/
+.vscode
 
 # Ignore all files in the logs directory
 logs/
 
 # Ignore environment files
 .env
+.gitignore
 
 # Ignore database files 
 *.db

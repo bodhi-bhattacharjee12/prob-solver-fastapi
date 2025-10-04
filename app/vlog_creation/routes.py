@@ -1,12 +1,14 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
+from fastapi import BackgroundTasks
 
 #own imports
 #from app.vlog_creation.schema import VlogRequest, VlogResponse
-from app.vlog_creation.service import generate_vlog
+from app.vlog_creation.service import generate_vlog, generate_subpoint
+from app.vlog_creation.schema import Section, State
 from app.adapter.groq_ai import Groq_AIModelAdapter
 #from app.adapter.registry import get_ai_model
-from app.vlog_creation.dependencies import get_ai_model, get_orchestrator_worker
+from app.vlog_creation.dependencies import get_ai_model, get_orchestrator_worker, get_state_worker
 from app.vlog_creation.nodes import Nodes
 
 router_ = APIRouter()
@@ -32,15 +34,36 @@ async def generate_vlog_endpoint(request: Request, model: Groq_AIModelAdapter = 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-## endpoint for generating vlog
-@router_.post("/generate-vlog")
-async def generate_vlog_endpoint(llm_message: str, orchestrator_worker: Nodes= Depends(get_orchestrator_worker)):
+## endpoint for generating sub points
+@router_.post("/generate-subpoints")
+async def generate_sub_endpoint(request: Request, llm_message: str, orchestrator_worker: Nodes= Depends(get_orchestrator_worker)):
     """
     Endpoint to generate a vlog script using the AI model.
     """
     try:
         # Call the service function to generate the vlog
-        response = generate_vlog(llm_message, orchestrator_worker)
+        response, unique_id = generate_subpoint(request, llm_message, orchestrator_worker)
+        #return response
+        return JSONResponse(content={"message": response, "unique_id": unique_id}, status_code=200)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except RuntimeError as re:
+        raise HTTPException(status_code=500, detail=str(re))
+    except Exception as e:
+        print(f"Unexpected error in generate_sub_endpoint: {e}")
+        raise HTTPException(status_code=444, detail=f'An unexpected error occurred.{e}')
+    
+
+## endpoint for generating vlog
+@router_.post("/generate-vlog")
+async def generate_vlog_endpoint(unique_id: str, human_review: list[Section], state: State =Depends(get_state_worker), orchestrator_worker: Nodes= Depends(get_orchestrator_worker)):
+    """
+    Endpoint to generate a vlog script using the AI model.
+    """
+    try:
+        # Call the service function to generate the vlog
+        print("Human review received in endpoint generate_vlog_endpoint")
+        response = generate_vlog(human_review, state[unique_id], orchestrator_worker)
         #return response
         return JSONResponse(content={"message": response}, status_code=200)
     except ValueError as ve:
@@ -49,11 +72,6 @@ async def generate_vlog_endpoint(llm_message: str, orchestrator_worker: Nodes= D
         raise HTTPException(status_code=500, detail=str(re))
     except Exception as e:
         print(f"Unexpected error in generate_vlog_endpoint: {e}")
-        # Log the orchestrator_worker type for debugging
-        try:
-            print("orchestrator_worker type:", type(orchestrator_worker))
-        except Exception:
-            pass
-        raise HTTPException(status_code=500, detail=f'An unexpected error occurred.{e}')
+        raise HTTPException(status_code=444, detail=f'An unexpected error occurred.{e}')
 
 
