@@ -14,6 +14,7 @@ class Groq_AIModelAdapter:
 
         # Initialize the Groq chat model instance here so get_llm() can return it
         try:
+            #self.llm = ChatGroq(model="qwen/qwen3-32b", api_key=self.groq_api_key, # openai/gpt-oss-120b
             self.llm = ChatGroq(model="openai/gpt-oss-120b", api_key=self.groq_api_key,
                                 temperature=self.temperature,
                                 max_tokens=self.max_tokens)
